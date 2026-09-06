@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Frontend build output
+dist/
+frontend/dist/
+
+# Runtime uploaded documents
+backend/uploads/
+
+# Generated evaluation artifacts
+backend/*_results.csv
+backend/*_results.json
+
+# Local IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
