@@ -34,7 +34,7 @@
   - Emphasize that the frontend dynamically resolves these citations to exact file names and page numbers.
 
 ## Slide 6: Evaluation & Testing
-- **Visual**: High-level test metrics (Backend 57/57, Frontend 13/13) and a brief mention of Phase 13 Eval.
+- **Visual**: High-level test metrics (Backend 63/63, Frontend 13/13) and a brief mention of Phase 13 Eval.
 - **Talking Points**:
   - Show that we built this with comprehensive automated and regression testing.
   - Mention our deterministic 20-question benchmark where we achieved 100% groundedness under our defined heuristic criteria.
@@ -52,4 +52,4 @@
 
 ## Slide 8: Q&A
 - **Visual**: "Questions?"
-- **Talking Points**: Open the floor to the audience. Be prepared to discuss fallback behavior (`gemini-3.5-flash-lite`, `gemini-3.7-flash`), pgvector indexing, and the custom word-boundary chunking logic.
+- **Talking Points**: Open the floor to the audience. Be prepared to discuss fallback behavior (`gemini-3.5-flash-lite`, `gemini-3.7-flash`), pgvector indexing, embedding batching, and the custom word-boundary chunking logic.

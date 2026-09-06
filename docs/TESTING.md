@@ -6,10 +6,10 @@ The project maintains two primary automated test suites for the frontend and bac
 
 ### Backend Verification (`pytest`)
 - **Framework**: Pytest `9.1.1`
-- **Total Tests**: 57
-- **Passing**: 57 (100%)
+- **Total Tests**: 63
+- **Passing**: 63 (100%)
 - **Failing**: 0
-- **Scope**: The backend suite covers API endpoint routing, Document extraction mock-ups (including normal PyMuPDF extraction and fallback Tesseract OCR extraction logic), PgVector similarity search logic, conversation cascading deletions, and E2E endpoints integrating the database with test containers.
+- **Scope**: The backend suite covers API endpoint routing, Document extraction mock-ups (including normal PyMuPDF extraction and fallback Tesseract OCR extraction logic), PgVector similarity search logic, conversation cascading deletions, embedding batching tests for the Gemini API limit, and E2E endpoints integrating the database with test containers.
 
 ### Frontend Verification (`vitest`)
 - **Framework**: Vitest `5.0.0`

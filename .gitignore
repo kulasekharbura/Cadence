@@ -24,6 +24,7 @@ backend/*_results.json
 
 # Temporary development scripts
 patch.py
+verify_and_update.py
 
 # Local IDE / OS files
 .vscode/

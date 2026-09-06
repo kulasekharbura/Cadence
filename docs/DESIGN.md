@@ -50,7 +50,7 @@ graph TD
 - **Frontend**: React 19, TypeScript, Vite, TailwindCSS, TanStack Query.
 - **Backend**: Python 3.11, FastAPI, SQLAlchemy (async), asyncpg, Alembic, PyMuPDF.
 - **AI Integration**: `google-genai` SDK using exclusively Google Gemini models.
-  - *Embedding*: `gemini-embedding-001` (1536 output dimensions)
+  - *Embedding*: `gemini-embedding-001` (1536 output dimensions). The `EmbeddingService` batches requests with a maximum batch size of 100 inputs to respect Gemini per-batch limits, preserving the original embedding order.
   - *Generation*: `gemini-3.5-flash` (Primary), `gemini-3.5-flash-lite`, `gemini-3.7-flash` (Fallback conditions include provider/model availability failures such as HTTP 429, 503, and 404).
 - **Database**: PostgreSQL with the `pgvector` extension.
 
@@ -60,7 +60,7 @@ graph TD
 
 ### Document Extraction
 - PyMuPDF performs standard text extraction.
-- **OCR Fallback**: If a page yields insufficient text (e.g. scanned/image-only PDFs), the system automatically invokes PyMuPDF's built-in Tesseract-backed OCR (`get_textpage_ocr`).
+- **OCR Fallback**: If a page yields insufficient text (defined by a threshold of `< 50` characters), the system automatically invokes PyMuPDF's built-in Tesseract-backed OCR (`get_textpage_ocr`). If OCR extraction fails, the system safely retains whatever text was originally extracted to avoid failing the entire document.
 - The OCR text retains the original `page_number` and drops transparently into the normal chunking and embedding pipeline. No parallel pipeline is needed.
 
 ### Chunking Implementation

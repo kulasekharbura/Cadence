@@ -13,7 +13,7 @@ This project is a modern, containerized, full-stack application designed to perf
 - **Frontend**: React 19, TypeScript, Vite, TailwindCSS, TanStack Query, React Markdown.
 - **Backend**: Python 3.11, FastAPI, SQLAlchemy (async), asyncpg, Alembic, PyMuPDF, Tesseract OCR.
 - **AI Integration**: `google-genai` SDK using exclusively Google Gemini models.
-  - *Embedding*: `gemini-embedding-001` (1536 dimensions)
+  - *Embedding*: `gemini-embedding-001` (1536 dimensions, batched up to 100 requests per API call)
   - *Generation*: `gemini-3.5-flash` (Primary), `gemini-3.5-flash-lite` & `gemini-3.7-flash` (Fallbacks)
 - **Database**: PostgreSQL with `pgvector`
 
@@ -22,7 +22,7 @@ This project is a modern, containerized, full-stack application designed to perf
 ## Getting Started
 
 ### Prerequisites
-- Docker and Docker Compose
+- Docker and Docker Compose (Tesseract OCR dependency is baked into the backend Docker image)
 - A valid Google Gemini API Key.
 
 ### Installation & Setup
