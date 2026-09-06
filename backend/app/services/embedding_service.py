@@ -17,8 +17,13 @@ class EmbeddingService:
             
         texts = [chunk.content for chunk in chunks]
         
-        # Generate embeddings via provider abstraction
-        embeddings = await self.provider.get_embeddings(texts)
+        # Generate embeddings via provider abstraction in batches to respect API limits (e.g. Gemini 100 max)
+        embeddings = []
+        batch_size = 100
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i + batch_size]
+            batch_embeddings = await self.provider.get_embeddings(batch_texts)
+            embeddings.extend(batch_embeddings)
         
         if len(embeddings) != len(chunks):
             raise RuntimeError(
