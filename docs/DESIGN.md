@@ -65,8 +65,8 @@ graph TD
 
 ### Chunking Implementation
 The system employs **custom word-boundary sliding-window chunking with configurable chunk size and overlap, strictly bounded to individual PDF pages**.
-- **Default chunk size**: 1000 characters
-- **Default overlap**: 200 characters
+- **Default chunk size**: 1000 words
+- **Default overlap**: 200 words
 - **Behavior**: It preserves `page_number` inherently and guarantees **no cross-page chunks**. The process yields a deterministic `chunk_index` for every block of text parsed by PyMuPDF.
 
 ### Presentation Layer
