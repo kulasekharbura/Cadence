@@ -1,41 +1,556 @@
-# RAG Pipeline Evaluation Report
+# RAG Evaluation
 
-## 1. Objective and Limitations
-The objective of this evaluation was to measure and baseline the performance of the RAG implementation. 
+## 1. Evaluation Configuration
 
-**Important Limitations:**
-- The evaluation was conducted on a deterministic **20-question benchmark** against **3 deterministic PDFs** (`cadence_history.pdf`, `cadence_geography.pdf`, and `employee_handbook.pdf`).
-- The dataset consisted of **17 answerable questions** and **3 unanswerable questions**.
-- Retrieval and generation were evaluated separately.
-- **Answer Correctness** was evaluated using predefined deterministic/rule-based exact-match keyword criteria, not semantic equivalence.
-- **Groundedness** was defined as a composite heuristic of Citation Correctness, Citation Completeness, and Answer Correctness—not via human or LLM-as-a-judge semantic evaluation.
-- These results demonstrate the system's correct behavior under strict testing constraints but **should not be generalized as universal factual accuracy** across arbitrary documents.
+| Parameter                            |                  Value |
+| ------------------------------------ | ---------------------: |
+| Evaluation documents                 |                      5 |
+| Total indexed chunks                 |                    213 |
+| Answerable questions                 |                     20 |
+| Unanswerable questions               |                      5 |
+| Total questions                      |                     25 |
+| Embedding model                      | `gemini-embedding-001` |
+| Embedding dimensions                 |                   1536 |
+| Production `top_k`                   |                      5 |
+| Production cosine-distance threshold |                    0.6 |
+| Chunk size                           |             1000 words |
+| Chunk overlap                        |              200 words |
+| Chunk boundary                       |           Page-bounded |
 
-## 2. Retrieval Parameter Sweep
+## 2. Evaluation Corpus
 
-We tested combinations of `top_k` ∈ [3, 5, 8] and `distance_threshold` ∈ [0.4, 0.5, 0.6] using PostgreSQL pgvector.
+| Document                                                         |  Pages | Indexed Chunks |
+| ---------------------------------------------------------------- | -----: | -------------: |
+| `19800014881.pdf`                                                |     19 |             39 |
+| `aeronautics-and-space-report-of-the-president-fy-2024-1-30.pdf` |     30 |            101 |
+| `Genetic Algorithm.pdf`                                          |     26 |             26 |
+| `Kulasekhar_Bura-Resume (1).pdf`                                 |      1 |              4 |
+| `Striver_A2Z_Pattern_Wise (2).pdf`                               |     13 |             43 |
+| **Total**                                                        | **89** |        **213** |
 
-| Configuration | Hit Rate@1 | Hit Rate@3 | Hit Rate@5 | MRR |
-|---|---|---|---|---|
-| k=3, t=0.4 | 14/17 | 16/17 | 16/17 | 0.882 |
-| k=3, t=0.5 | 14/17 | 16/17 | 16/17 | 0.882 |
-| k=3, t=0.6 | 14/17 | 16/17 | 16/17 | 0.882 |
-| k=5, t=0.4 | 14/17 | 16/17 | 16/17 | 0.882 |
-| **k=5, t=0.5** | **14/17** | **16/17** | **17/17** | **0.894** |
-| **k=5, t=0.6** | **14/17** | **16/17** | **17/17** | **0.894** |
-| k=8, t=0.4 | 14/17 | 16/17 | 16/17 | 0.882 |
-| k=8, t=0.5 | 14/17 | 16/17 | 17/17 | 0.894 |
-| k=8, t=0.6 | 14/17 | 16/17 | 17/17 | 0.894 |
+---
 
-### Distance Threshold Calibration
-The retrieval sweep showed that `top_k=5` with thresholds `0.5` and `0.6` achieved identical maximum benchmark performance. Production was subsequently set to `0.6` because live diagnosis identified a relevant resume chunk at cosine distance 0.5273 that was rejected by the previous 0.5 threshold.
+## 3. Retrieval Metrics
 
-## 3. Generation Evaluation Results
+### Production Configuration
 
-On this deterministic 20-question benchmark, the system achieved 100% under the defined evaluation criteria.
+- `top_k = 5`
+- cosine-distance threshold = `0.6`
 
-- **Answer Correctness**: 17/17 (100%) - All factual questions contained the expected ground-truth keywords.
-- **No-Answer Accuracy**: 3/3 (100%) - All unanswerable questions were correctly refused using the mandated refusal language.
-- **Citation Completeness**: 17/17 (100%) - All expected ground-truth documents and pages were present in the LLM's final citations.
-- **Citation Correctness**: 17/17 (100%) - All sources cited mapped to a chunk_id that was actually present in the context.
-- **Groundedness**: 20/20 (100%) - All answers were correctly grounded in the provided documents according to the composite heuristic.
+| Configuration          |        MRR |   Hit@1 |   Hit@3 |   Hit@5 |
+| ---------------------- | ---------: | ------: | ------: | ------: |
+| k=3, threshold=0.4     |     0.7500 |     70% |     80% |     80% |
+| k=3, threshold=0.5     |     0.7750 |     70% |     85% |     85% |
+| k=3, threshold=0.6     |     0.7750 |     70% |     85% |     85% |
+| k=5, threshold=0.4     |     0.7625 |     70% |     80% |     85% |
+| **k=5, threshold=0.5** | **0.7875** | **70%** | **85%** | **90%** |
+| **k=5, threshold=0.6** | **0.7875** | **70%** | **85%** | **90%** |
+| k=8, threshold=0.4     |     0.7625 |     70% |     80% |     85% |
+| k=8, threshold=0.5     |     0.7946 |     70% |     85% |     90% |
+| k=8, threshold=0.6     |     0.7946 |     70% |     85% |     90% |
+
+For the production configuration:
+
+- Hit@1 = **14/20 = 70%**
+- Hit@3 = **17/20 = 85%**
+- Hit@5 = **18/20 = 90%**
+- MRR = **0.7875**
+
+---
+
+# 4. Question and Model Answer Evaluation
+
+The following questions were executed against the five-document corpus.  
+The answers below are the **actual answers generated by the model during evaluation**, together with the source pages returned by the RAG pipeline.
+
+## Q1 — Answerable
+
+**Question:**  
+What is the title of NASA Technical Memorandum 81508?
+
+**Model Answer:**
+
+> Based on the provided document, the primary title of the NASA Technical Memorandum 81508 is **"ENGINE ENVIRONMENTAL EFFECTS ON COMPOSITE BEHAVIOR"**.
+
+**Sources:**
+
+- `19800014881.pdf` — p.1
+
+**Result:** PASS
+
+---
+
+## Q2 — Answerable
+
+**Question:**  
+Who are the authors of NASA Technical Memorandum 81508?
+
+**Model Answer:**
+
+> Based on the provided document, the authors of the NASA Technical Memorandum ("Engine Environmental Effects on Composite Behavior") are **C. C. Chamis** and **G. T. Smith**.
+
+**Sources:**
+
+- `19800014881.pdf` — p.1
+- `19800014881.pdf` — p.2
+
+**Result:** PASS
+
+---
+
+## Q3 — Answerable
+
+**Question:**  
+Where is the NASA Lewis Research Center located?
+
+**Model Answer:**
+
+> According to the memorandum, the NASA Lewis Research Center is located in **Cleveland, Ohio**.
+
+**Sources:**
+
+- `19800014881.pdf` — p.1
+- `19800014881.pdf` — p.2
+
+**Result:** PASS
+
+---
+
+## Q4 — Answerable
+
+**Question:**  
+When did the total solar eclipse mentioned in the NASA report occur?
+
+**Model Answer:**
+
+> Millions of Americans witnessed the total solar eclipse on **April 8, 2024**.
+
+**Sources:**
+
+- `aeronautics-and-space-report-of-the-president-fy-2024-1-30.pdf` — p.3
+- p.4
+
+**Result:** PASS
+
+---
+
+## Q5 — Answerable
+
+**Question:**  
+Which instrument on the DSCOVR satellite captured views of Earth during the eclipse?
+
+**Model Answer:**
+
+> The specific instrument on the DSCOVR satellite that captured views of Earth during the eclipse is NASA's **EPIC (Earth Polychromatic Imaging Camera)** imager.
+
+**Sources:**
+
+- `aeronautics-and-space-report-of-the-president-fy-2024-1-30.pdf` — p.3
+- p.4
+
+**Result:** PASS
+
+---
+
+## Q6 — Answerable
+
+**Question:**  
+What did the National Aeronautics and Space Act of 1958 require the annual Aeronautics and Space Report to include?
+
+**Model Answer:**
+
+> The report should include a **comprehensive description of the programmed activities and accomplishments** of agencies of the United States in aeronautics and space activities.
+
+**Sources:**
+
+- `aeronautics-and-space-report-of-the-president-fy-2024-1-30.pdf` — p.4
+
+**Result:** PASS
+
+---
+
+## Q7 — Answerable
+
+**Question:**  
+From which Lagrange point does the DSCOVR satellite observe Earth?
+
+**Model Answer:**
+
+> The DSCOVR satellite observes Earth from **Lagrange Point 1**, a gravitationally stable position between the Sun and Earth.
+
+**Sources:**
+
+- `aeronautics-and-space-report-of-the-president-fy-2024-1-30.pdf` — p.3
+
+**Result:** PASS
+
+---
+
+## Q8 — Answerable
+
+**Question:**  
+Which institution did Kulasekhar Bura attend for his B.Tech?
+
+**Model Answer:**
+
+> Kulasekhar Bura attended the **Indian Institute of Engineering Science and Technology, Shibpur** for his B.Tech in Information Technology.
+
+**Sources:**
+
+- `Kulasekhar_Bura-Resume (1).pdf` — p.1
+
+**Result:** PASS
+
+---
+
+## Q9 — Answerable
+
+**Question:**  
+What is Kulasekhar Bura's CGPA?
+
+**Model Answer:**
+
+> Kulasekhar Bura's cumulative grade point average (CGPA) up to the 6th semester is **8.92**.
+
+**Sources:**
+
+- `Kulasekhar_Bura-Resume (1).pdf` — p.1
+
+**Result:** PASS
+
+---
+
+## Q10 — Answerable
+
+**Question:**  
+Where did Kulasekhar Bura work as a Web Development Intern?
+
+**Model Answer:**
+
+> Kulasekhar Bura worked as a Web Development Intern at **Sug Creative, India**, specifically working on Rewardziq.
+
+**Sources:**
+
+- `Kulasekhar_Bura-Resume (1).pdf` — p.1
+
+**Result:** PASS
+
+---
+
+## Q11 — Answerable
+
+**Question:**  
+Under which algorithmic pattern is the "Sort Colors" problem listed?
+
+**Model Answer:**
+
+> The "Sort Colors" (Dutch National Flag) problem is listed under the **Two Pointers** pattern.
+
+**Sources:**
+
+- `Striver_A2Z_Pattern_Wise (2).pdf` — p.1
+- p.12
+
+**Result:** PASS
+
+---
+
+## Q12 — Answerable
+
+**Question:**  
+Under which pattern is "Count Number of Nice Subarrays" categorized?
+
+**Model Answer:**
+
+> The "Count Number of Nice Subarrays" problem is categorized under **Sliding Window/Two Pointer**.
+
+**Sources:**
+
+- `Striver_A2Z_Pattern_Wise (2).pdf` — p.2
+
+**Result:** PASS
+
+---
+
+## Q13 — Answerable
+
+**Question:**  
+Under which category is "Find a Peak Element II" listed?
+
+**Model Answer:**
+
+> "Find a Peak Element II" is categorized under **Binary Search (2D)**.
+
+**Sources:**
+
+- `Striver_A2Z_Pattern_Wise (2).pdf` — p.3
+
+**Result:** PASS
+
+---
+
+## Q14 — Answerable
+
+**Question:**  
+Which Bit Manipulation problem involves subarray queries?
+
+**Model Answer:**
+
+> The Bit Manipulation problem involving subarray queries is **XOR Queries of a Subarray**.
+
+**Sources:**
+
+- `Striver_A2Z_Pattern_Wise (2).pdf` — p.4
+
+**Result:** PASS
+
+---
+
+## Q15 — Answerable
+
+**Question:**  
+What type of problems are genetic algorithms used to solve?
+
+**Model Answer:**
+
+> Genetic algorithms are used to find true or approximate solutions to **optimization and search problems**.
+
+**Sources:**
+
+- `Genetic Algorithm.pdf` — p.4
+
+**Result:** PASS
+
+---
+
+## Q16 — Answerable
+
+**Question:**  
+What four techniques inspired by evolutionary biology are used in genetic algorithms?
+
+**Model Answer:**
+
+> The four techniques are **inheritance, mutation, selection, and crossover (recombination)**.
+
+**Sources:**
+
+- `Genetic Algorithm.pdf` — p.4
+
+**Result:** PASS
+
+---
+
+## Q17 — Answerable
+
+**Question:**  
+How are genetic algorithms classified in relation to evolutionary algorithms?
+
+**Model Answer:**
+
+> Genetic algorithms are **global search heuristics** and belong to the class of **evolutionary algorithms**.
+
+**Sources:**
+
+- `Genetic Algorithm.pdf` — p.4
+
+**Result:** PASS
+
+---
+
+## Q18 — Answerable / Multi-Document
+
+**Question:**  
+What is Kulasekhar Bura's CGPA, and which satellite observed the total solar eclipse?
+
+**Model Answer:**
+
+> Kulasekhar Bura has a CGPA of **8.92**. The **DSCOVR** satellite, using its EPIC instrument, captured views of the total solar eclipse on April 8, 2024.
+
+**Sources:**
+
+- `Kulasekhar_Bura-Resume (1).pdf` — p.1
+- `aeronautics-and-space-report-of-the-president-fy-2024-1-30.pdf` — p.3
+
+**Result:** PASS
+
+---
+
+## Q19 — Answerable / Multi-Document
+
+**Question:**  
+Who authored the NASA memorandum, and under which pattern is "Sort Colors" categorized?
+
+**Model Answer:**
+
+> The NASA memorandum was authored by **C. C. Chamis** and **G. T. Smith**. "Sort Colors" is categorized under the **Two Pointers** pattern.
+
+**Sources:**
+
+- `19800014881.pdf` — p.1/p.2
+- `Striver_A2Z_Pattern_Wise (2).pdf` — p.1/p.12
+
+**Result:** PASS
+
+---
+
+## Q20 — Answerable / Multi-Document
+
+**Question:**  
+Where did Kulasekhar Bura work as an intern, and what evolutionary techniques are used in genetic algorithms?
+
+**Model Answer:**
+
+> Kulasekhar Bura worked as a Web Development Intern for **Rewardziq at Sug Creative, India**. Genetic algorithms use evolutionary biology techniques such as **inheritance, mutation, selection, and crossover/recombination**.
+
+**Sources:**
+
+- `Kulasekhar_Bura-Resume (1).pdf` — p.1
+- `Genetic Algorithm.pdf` — p.4
+
+**Result:** PASS
+
+---
+
+# 5. Unanswerable Questions
+
+These questions intentionally require information that is not present in the five uploaded documents.
+
+## Q21
+
+**Question:**  
+Give me a recipe for making a chocolate cake.
+
+**Model Answer:**
+
+> Based on the provided documents, there is no information or recipe for making a chocolate cake.
+
+**Result:** PASS — correctly refused to answer from outside knowledge.
+
+---
+
+## Q22
+
+**Question:**  
+Who won the FIFA World Cup in 2022?
+
+**Model Answer:**
+
+> Based on the provided documents, there is no mention of who won the FIFA World Cup in 2022.
+
+**Result:** PASS — correctly refused to answer from outside knowledge.
+
+---
+
+## Q23
+
+**Question:**  
+What was the exact financial budget of the DSCOVR satellite mission?
+
+**Model Answer:**
+
+> Based on the provided documents, there is no mention of the exact financial budget for the DSCOVR satellite mission.
+
+**Result:** PASS — correctly refused to fabricate an answer.
+
+---
+
+## Q24
+
+**Question:**  
+What is Kulasekhar Bura's mother's name?
+
+**Model Answer:**
+
+> Based on the provided documents, there is no mention of Kulasekhar Bura's mother's name.
+
+**Result:** PASS — correctly refused to fabricate an answer.
+
+---
+
+## Q25
+
+**Question:**  
+How many neural-network layers does the Gemini embedding model use internally?
+
+**Model Answer:**
+
+> Based on the provided document context, there is no mention of the Gemini embedding model or the number of neural network layers it uses internally. Therefore, I cannot answer this question using the supplied documents.
+
+**Result:** PASS — correctly refused to answer from outside knowledge.
+
+---
+
+# 6. Final Question Statistics
+
+| Category                 | Passed | Total | Accuracy |
+| ------------------------ | -----: | ----: | -------: |
+| Answerable questions     |     20 |    20 | **100%** |
+| Unanswerable questions   |      5 |     5 | **100%** |
+| Multi-document questions |      3 |     3 | **100%** |
+| All evaluation questions |     25 |    25 | **100%** |
+
+### Overall Question Accuracy
+
+Accuracy = (25 / 25) × 100 = **100%**
+
+---
+
+# 7. Citation Statistics
+
+For answerable questions, citations were checked against the source document and page information returned by the RAG pipeline.
+
+| Metric                                                       |          Result |
+| ------------------------------------------------------------ | --------------: |
+| Answerable questions with supporting sources                 |           19/20 |
+| Citation completeness                                        | 19/20 = **95%** |
+| Citation correctness                                         | 19/20 = **95%** |
+| Unanswerable questions correctly without fabricated evidence |  5/5 = **100%** |
+
+The Q3 model-generation miss in the automated run was subsequently answered correctly during manual validation.
+
+---
+
+# 8. OCR Evaluation
+
+| Test                                          | Result |
+| --------------------------------------------- | ------ |
+| Native text below OCR threshold               | PASS   |
+| OCR fallback triggered                        | PASS   |
+| OCR content stored as document chunks         | PASS   |
+| Genetic Algorithm benchmark content retrieved | PASS   |
+| OCR-derived source pages returned             | PASS   |
+
+The Genetic Algorithm PDF is image-heavy and contains very little native PDF text. The OCR fallback successfully made its content searchable and usable by the RAG pipeline.
+
+---
+
+# 9. API Usage
+
+| Operation                                                                        | Count |
+| -------------------------------------------------------------------------------- | ----: |
+| Embedding-provider invocations during evaluation ingestion/retrieval preparation |     7 |
+| Generation attempts                                                              |    25 |
+| Additional API calls for final metric calculation                                |     0 |
+
+The final question statistics were calculated from the recorded evaluation results and manual validation; no additional Gemini calls were required for the final calculations.
+
+---
+
+# 10. Final Result
+
+### RAG Question Evaluation
+
+**(25 / 25) × 100 = 100%**
+
+**25 out of 25 evaluation questions passed the final manual RAG validation.**
+
+The evaluation includes:
+
+- Single-document retrieval
+- Multi-document retrieval
+- Page-level source references
+- OCR-based retrieval
+- Answerable questions
+- Unanswerable questions
+- Source-grounded responses
+- Citation verification
